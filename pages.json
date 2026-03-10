@@ -3,15 +3,77 @@
 		{
 			"path": "pages/index/index",
 			"style": {
-				"navigationBarTitleText": "uni-app"
+				"navigationBarTitleText": "Home",
+				"navigationStyle": "custom",
+				"enablePullDownRefresh": true
+			}
+		},
+		{
+			"path": "pages/columns/index",
+			"style": {
+				"navigationBarTitleText": "专栏",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/shelf/index",
+			"style": {
+				"navigationBarTitleText": "书架",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/shop/index",
+			"style": {
+				"navigationBarTitleText": "商城",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/profile/index",
+			"style": {
+				"navigationBarTitleText": "我的",
+				"navigationStyle": "custom"
 			}
 		}
 	],
 	"globalStyle": {
-		"navigationBarTextStyle": "black",
-		"navigationBarTitleText": "uni-app",
-		"navigationBarBackgroundColor": "#F8F8F8",
-		"backgroundColor": "#F8F8F8"
+		"navigationBarTextStyle": "white",
+		"navigationBarTitleText": "lxtian-miniapp",
+		"navigationBarBackgroundColor": "#0B1020",
+		"backgroundColor": "#0B1020"
+	},
+	"tabBar": {
+		"color": "rgba(255,255,255,0.55)",
+		"selectedColor": "#7c4dff",
+		"backgroundColor": "#0B1020",
+		"borderStyle": "white",
+		"list": [
+			{
+				"pagePath": "pages/index/index",
+				"text": "首页",
+				"iconPath": "static/tabbar/tab-home.png",
+				"selectedIconPath": "static/tabbar/tab-home-active.png"
+			},
+			{
+				"pagePath": "pages/columns/index",
+				"text": "专栏",
+				"iconPath": "static/tabbar/tab-service.png",
+				"selectedIconPath": "static/tabbar/tab-service-active.png"
+			},
+			{
+				"pagePath": "pages/shelf/index",
+				"text": "AI知识库",
+				"iconPath": "static/tabbar/tab-ai.png",
+				"selectedIconPath": "static/tabbar/tab-ai-active.png"
+			},
+			{
+				"pagePath": "pages/profile/index",
+				"text": "我的",
+				"iconPath": "static/tabbar/tab-profile.png",
+				"selectedIconPath": "static/tabbar/tab-profile-active.png"
+			}
+		]
 	},
 	"uniIdRouter": {}
 }
