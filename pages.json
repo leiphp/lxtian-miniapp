@@ -9,6 +9,13 @@
 			}
 		},
 		{
+			"path": "pages/article/detail",
+			"style": {
+				"navigationBarTitleText": "文章详情",
+				"navigationStyle": "custom"
+			}
+		},
+		{
 			"path": "pages/columns/index",
 			"style": {
 				"navigationBarTitleText": "专栏",

@@ -15,13 +15,13 @@
 		<scroll-view class="chips" scroll-x>
 			<view class="chips-inner">
 				<view
-					v-for="c in categories"
-					:key="c"
+					v-for="c in categoryOptions"
+					:key="c.id"
 					class="chip"
-					:class="c === activeCategory ? 'chip-active' : ''"
-					@click="activeCategory = c"
+					:class="c.name === activeCategory ? 'chip-active' : ''"
+					@click="activeCategory = c.name"
 				>
-					<text class="chip-text">{{ c }}</text>
+					<text class="chip-text">{{ c.name }}</text>
 				</view>
 			</view>
 		</scroll-view>
@@ -29,15 +29,9 @@
 		<!-- 列表 -->
 		<scroll-view class="list" scroll-y>
 			<view class="list-inner">
-				<view
-					v-for="item in filteredList"
-					:key="item.id"
-					class="card"
-					@click="tapCard(item.id)"
-				>
+				<view v-for="item in filteredList" :key="item.id" class="card" @click="tapCard(item.id)">
 					<view class="thumb">
-						<!-- 先用纯色占位，等你从 Figma 导出真实封面再替换 -->
-						<view class="thumb-ph"></view>
+						<image class="thumb-img" :src="item.cover" mode="aspectFill" />
 					</view>
 
 					<view class="card-main">
@@ -47,14 +41,14 @@
 
 						<view class="meta-row">
 							<view class="meta-left">
-								<text class="meta-icon">👥</text>
-								<text class="meta-text">{{ item.users }}</text>
+								<text class="meta-icon">👁</text>
+								<text class="meta-text">{{ item.views }}</text>
 								<text class="meta-dot">·</text>
-								<text class="meta-text">{{ item.lessons }}</text>
+								<text class="meta-text">{{ item.author }}</text>
 							</view>
 
-							<view class="price" :class="item.priceType === 'free' ? 'price-free' : ''">
-								<text class="price-text">{{ item.priceText }}</text>
+							<view class="price price-free">
+								<text class="price-text">阅读</text>
 							</view>
 						</view>
 					</view>
@@ -67,61 +61,93 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
+import { getCategoryList } from '@/api/category.js'
+import { getArticleList } from '@/api/article.js'
 
-const categories = ref(['全部', 'AI 绘画', '编程开发', '产品经理', '运营实战'])
+const categoryOptions = ref([{ id: 0, name: '全部' }])
 const activeCategory = ref('全部')
+const loading = ref(false)
+const articleLoading = ref(false)
 
-const list = ref([
-	{
-		id: 'mj',
-		category: 'AI 绘画',
-		tag: 'AI 绘画',
-		title: 'Midjourney 商业提示词全...',
-		desc: '从零到一掌握顶级商业绘图逻辑，解锁 AIG 商业价值潜力。',
-		users: '1.2k',
-		lessons: '18讲',
-		priceType: 'paid',
-		priceText: '¥199'
-	},
-	{
-		id: 'py',
-		category: '编程开发',
-		tag: '编程开发',
-		title: 'Python 自动化办公实战',
-		desc: '用代码双手，零基础也能快速上手的职场进阶必备技能课。',
-		users: '856',
-		lessons: '12讲',
-		priceType: 'free',
-		priceText: 'FREE'
-	},
-	{
-		id: 'pm',
-		category: '产品经理',
-		tag: '产品经理',
-		title: 'AI 时代的产品方法论',
-		desc: '重塑产品思维，深度学习如何将 AI 能力融入到业务闭环中。',
-		users: '4.9',
-		lessons: '16讲',
-		priceType: 'paid',
-		priceText: '¥299'
-	},
-	{
-		id: 'ops',
-		category: '运营实战',
-		tag: '运营实战',
-		title: '私域流量与 AI 转化手册',
-		desc: '利用 AI 工具搭建高效私域转化体系，实现业务爆发式增长。',
-		users: '628',
-		lessons: '10讲',
-		priceType: 'paid',
-		priceText: '¥159'
-	}
-])
+// 用文章接口数据驱动列表
+const list = ref([])
 
 const filteredList = computed(() => {
 	if (activeCategory.value === '全部') return list.value
 	return list.value.filter(i => i.category === activeCategory.value)
+})
+
+function shortCategoryName(name) {
+	const n = String(name || '').trim()
+	if (!n) return ''
+	// “前端开发/后端开发/硬件开发” => “前端/后端/硬件”
+	const idx = n.indexOf('开发')
+	if (idx > 0) return n.slice(0, idx)
+	return n.slice(0, 2)
+}
+
+function formatCount(n) {
+	const num = Number(n || 0)
+	if (!Number.isFinite(num)) return '0'
+	if (num >= 10000) return (num / 10000).toFixed(1).replace(/\.0$/, '') + 'w'
+	if (num >= 1000) return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'k'
+	return String(num)
+}
+
+function currentCid() {
+	if (activeCategory.value === '全部') return undefined
+	const hit = categoryOptions.value.find(c => c.name === activeCategory.value)
+	return hit?.id
+}
+
+async function fetchCategories() {
+	loading.value = true
+	try {
+		const res = await getCategoryList({ page: 1, page_size: 10 })
+		const rawList = res?.list ?? []
+		categoryOptions.value = [
+			{ id: 0, name: '全部' },
+			...rawList.map((item) => ({ id: item.id, name: shortCategoryName(item.name) }))
+		]
+	} catch (e) {
+		uni.showToast({ title: '分类加载失败', icon: 'none' })
+	} finally {
+		loading.value = false
+	}
+}
+
+async function fetchArticles() {
+	articleLoading.value = true
+	try {
+		const cid = currentCid()
+		const res = await getArticleList({ page: 1, page_size: 6, cid })
+		const rawList = res?.list ?? []
+		list.value = rawList.map((a) => ({
+			id: a.id,
+			category: a.cname || activeCategory.value || '全部',
+			tag: a.cname || '',
+			title: a.title || '',
+			desc: a.description || '',
+			cover: a.path || '',
+			views: formatCount(a.view_count),
+			author: a.author || ''
+		}))
+	} catch (e) {
+		uni.showToast({ title: '文章加载失败', icon: 'none' })
+		list.value = []
+	} finally {
+		articleLoading.value = false
+	}
+}
+
+onMounted(() => {
+	fetchCategories()
+	fetchArticles()
+})
+
+watch(activeCategory, () => {
+	fetchArticles()
 })
 
 function goHome() {
@@ -133,7 +159,10 @@ function tapSearch() {
 }
 
 function tapCard(id) {
-	uni.showToast({ title: 'Open: ' + id, icon: 'none' })
+	if (!id) return
+	uni.navigateTo({
+		url: `/pages/article/detail?id=${id}`
+	})
 }
 </script>
 
@@ -213,11 +242,13 @@ function tapCard(id) {
 
 	.list {
 		flex: 1;
+		background: #0b1020;
 	}
 
 	.list-inner {
 		padding: 18rpx 24rpx 0 24rpx;
 		box-sizing: border-box;
+		background: #0b1020;
 	}
 
 	.card {
@@ -227,24 +258,28 @@ function tapCard(id) {
 		border-radius: 28rpx;
 		padding: 18rpx;
 		margin-bottom: 18rpx;
+		align-items: stretch;
 	}
 
 	.thumb {
+		flex: 0 0 176rpx;
 		width: 176rpx;
 		height: 176rpx;
 		border-radius: 24rpx;
 		overflow: hidden;
 		margin-right: 18rpx;
+		background: rgba(255, 255, 255, 0.08);
 	}
 
-	.thumb-ph {
+	.thumb-img {
 		width: 100%;
 		height: 100%;
-		background: rgba(255, 255, 255, 0.12);
+		display: block;
 	}
 
 	.card-main {
 		flex: 1;
+		min-width: 0;
 		display: flex;
 		flex-direction: column;
 	}
@@ -261,6 +296,9 @@ function tapCard(id) {
 		color: rgba(255, 255, 255, 0.92);
 		font-weight: 800;
 		line-height: 1.25;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 
 	.desc {
@@ -268,6 +306,12 @@ function tapCard(id) {
 		font-size: 22rpx;
 		color: rgba(255, 255, 255, 0.55);
 		line-height: 1.4;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		display: -webkit-box;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 2;
+		line-clamp: 2;
 	}
 
 	.meta-row {
@@ -326,6 +370,7 @@ function tapCard(id) {
 		height: 40rpx;
 		padding-bottom: constant(safe-area-inset-bottom);
 		padding-bottom: env(safe-area-inset-bottom);
+		background: #0b1020;
 	}
 </style>
 
