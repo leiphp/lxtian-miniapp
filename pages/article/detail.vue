@@ -54,18 +54,61 @@ function decodeHtml(str) {
 		.replace(/&#39;/g, "'")
 }
 
-// 将接口内容尽量转成 Markdown 风格 HTML
+// 处理后端返回的 HTML 中，pre>code 里仍然包含 ```xxx 代码块语法的情况
+function normalizeHtmlCodeBlocks(html) {
+	return html.replace(/<pre[^>]*><code>([\s\S]*?)<\/code><\/pre>/g, (match, inner) => {
+		let text = inner.trim()
+		// 只处理以 ``` 开头的 fenced 代码块
+		if (text.startsWith('```')) {
+			// 去掉开头 ```lang
+			text = text.replace(/^\s*```[^\n]*\n?/, '')
+			// 去掉结尾 ```
+			text = text.replace(/```[\s]*$/, '')
+		}
+		const esc = text
+			.replace(/&/g, '&amp;')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;')
+			.replace(/"/g, '&quot;')
+			.replace(/'/g, '&#39;')
+		return `<pre class="code-block"><code>${esc}</code></pre>`
+	})
+}
+
+// 自定义 Markdown 渲染，主要是代码块结构
+const renderer = new marked.Renderer()
+renderer.code = (code, infostring) => {
+	const lang = (infostring || '').trim()
+	let raw = code
+	// 兼容对象形式，避免 [object Object]
+	if (raw && typeof raw === 'object') {
+		raw = raw.raw || raw.text || raw.value || JSON.stringify(raw, null, 2)
+	}
+	const esc = String(raw || '')
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;')
+		.replace(/'/g, '&#39;')
+
+	// 用 pre+code，让换行自然保留；头部简单显示语言
+	return `<pre class="code-block"><code>${esc}</code></pre>`
+}
+
+marked.setOptions({
+	breaks: true,
+	renderer
+})
+
+// 将接口内容转成可渲染的 HTML
 function toHtml(raw) {
 	const s = decodeHtml(raw || '').trim()
 	if (!s) return ''
-	// 如果看起来本身就是 HTML，则直接返回
+	// 已经是 HTML 的情况，额外规范化代码块
 	if (/^<\/?[a-z][\s\S]*>/i.test(s)) {
-		return s
+		return normalizeHtmlCodeBlocks(s)
 	}
-	// 否则按 Markdown 解析
-	marked.setOptions({
-		breaks: true
-	})
+	// 纯 markdown 的情况交给 marked，代码块走自定义 renderer
 	return marked.parse(s)
 }
 
@@ -81,7 +124,10 @@ async function fetchDetail(id) {
 	try {
 		const data = await getArticleDetail(id)
 		article.value = data
-		contentHtml.value = toHtml(data.content || '')
+		// 兼容后端返回 content / body / body_html / html 等字段
+		const rawContent =
+			data.content ?? data.body ?? data.body_html ?? data.html ?? data.article_content ?? ''
+		contentHtml.value = toHtml(rawContent)
 	} catch (e) {
 		uni.showToast({ title: '文章详情加载失败', icon: 'none' })
 	}
@@ -197,12 +243,17 @@ function goBack() {
 		border-radius: 24rpx;
 		background: rgba(15, 23, 42, 0.96);
 		padding: 20rpx;
+		word-break: break-word;
+		overflow-wrap: break-word;
+		overflow: hidden;
 	}
 
 	.article-content {
 		font-size: 26rpx;
 		color: rgba(226, 232, 240, 0.96);
 		line-height: 1.7;
+		word-break: break-word;
+		overflow-wrap: break-word;
 	}
 
 	/* Markdown 风格排版 */
@@ -256,12 +307,31 @@ function goBack() {
 		background: #020617;
 		border-radius: 16rpx;
 		overflow: hidden;
+		white-space: pre-wrap;
+		word-break: break-all;
+		overflow-wrap: break-word;
 	}
 
-	.article-content pre code {
+	/* 针对通过 ```mysql ``` 包裹的代码块，加明显的方框效果 */
+	.article-content .code-block {
+		margin: 18rpx 0;
+		padding: 18rpx;
+		background: #020617;
+		border-radius: 16rpx;
+		border-width: 1rpx;
+		border-style: solid;
+		border-color: rgba(148, 163, 184, 0.5);
+		white-space: pre-wrap;
+		word-break: break-all;
+		overflow-wrap: break-word;
+	}
+
+	.article-content pre code,
+	.article-content .code-block code {
 		display: block;
 		white-space: pre-wrap;
 		word-break: break-all;
+		overflow-wrap: break-word;
 		background: transparent;
 		padding: 0;
 	}

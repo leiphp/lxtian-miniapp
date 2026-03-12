@@ -125,8 +125,8 @@ async function fetchArticles() {
 		const rawList = res?.list ?? []
 		list.value = rawList.map((a) => ({
 			id: a.id,
-			category: a.cname || activeCategory.value || '全部',
-			tag: a.cname || '',
+			category: shortCategoryName(a.cname) || a.cname || '全部',
+			tag: shortCategoryName(a.cname) || a.cname || '',
 			title: a.title || '',
 			desc: a.description || '',
 			cover: a.path || '',
