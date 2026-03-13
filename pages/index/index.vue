@@ -5,7 +5,7 @@
 				<view class="topbar">
 					<view class="topbar-left">
 						<text class="welcome">Welcome to</text>
-						<text class="brand">AI Nexus</text>
+						<text class="brand">雷小天博客</text>
 					</view>
 					<view class="topbar-right">
 						<view class="circle-btn" @click="tapNotify">
@@ -52,7 +52,7 @@
 						@click="tapQuick(item.id)"
 					>
 						<view class="quick-icon">
-							<text class="quick-icon-text">{{ item.short }}</text>
+							<image class="quick-icon-img" :src="item.icon" mode="aspectFit" />
 						</view>
 						<text class="quick-text">{{ item.text }}</text>
 					</view>
@@ -105,26 +105,39 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { onPullDownRefresh } from '@dcloudio/uni-app'
+import { getArticleList } from '@/api/article.js'
 
 const quickList = ref([
-	{ id: 'column', short: '▦', text: 'Column' },
-	{ id: 'library', short: '◎', text: 'AI Library' },
-	{ id: 'shop', short: '▣', text: 'Shop' },
-	{ id: 'more', short: '⋯', text: 'More' }
+	{ id: 'column', icon: '/static/icon/home-column.png', text: 'Column' },
+	{ id: 'library', icon: '/static/icon/home-ailibrary.png', text: 'AI Library' },
+	{ id: 'shop', icon: '/static/icon/home-shop.png', text: 'Shop' },
+	{ id: 'more', icon: '/static/icon/home-more.png', text: 'More' }
 ])
 
 const hotTools = ref([
-	{ id: 'flux', title: 'Flux Pro', subtitle: 'Image Generation', img: '/static/logo.png' },
-	{ id: 'claude', title: 'Claude 3.5', subtitle: 'Language Model', img: '/static/logo.png' },
-	{ id: 'suno', title: 'Suno', subtitle: 'Audio & Music', img: '/static/logo.png' }
+	{ id: 'flux', title: 'Flux Pro', subtitle: 'Image Generation', img: '/static/example/fluxpro.png' },
+	{ id: 'claude', title: 'Claude 3.5', subtitle: 'Language Model', img: '/static/example/claude3.5.png' },
+	{ id: 'suno', title: 'Suno', subtitle: 'Audio & Music', img: '/static/example/claude3.5.png' }
 ])
+// 首页推荐文章（types=1，仅取前 3 条）
+const recommended = ref([])
 
-const recommended = ref([
-	{ id: 'rise', title: 'The Rise of Agentic AI', subtitle: 'Weekly digest · 8 min read', img: '/static/logo.png' },
-	{ id: 'playbook', title: 'Workflow Playbook', subtitle: 'Curated guides · Updated', img: '/static/logo.png' }
-])
+async function fetchRecommended() {
+	try {
+		const res = await getArticleList({ page: 1, page_size: 3, types: 1 })
+		const list = res?.list || []
+		recommended.value = list.slice(0, 3).map((item) => ({
+			id: item.id,
+			title: item.title || '',
+			subtitle: item.description || item.brief || '',
+			img: item.path || '/static/logo.png'
+		}))
+	} catch (e) {
+		uni.showToast({ title: '推荐文章加载失败', icon: 'none' })
+	}
+}
 
 function onSearch(e) {
 	const keyword = (e?.detail?.value || '').trim()
@@ -132,10 +145,14 @@ function onSearch(e) {
 	uni.showToast({ title: 'Search: ' + keyword, icon: 'none' })
 }
 
+onMounted(() => {
+	fetchRecommended()
+})
+
 onPullDownRefresh(() => {
-	setTimeout(() => {
+	fetchRecommended().finally(() => {
 		uni.stopPullDownRefresh()
-	}, 600)
+	})
 })
 
 function tapNotify() {
@@ -166,7 +183,8 @@ function tapTool(id) {
 	uni.showToast({ title: 'Open: ' + id, icon: 'none' })
 }
 function tapRecommended(id) {
-	uni.showToast({ title: 'Open: ' + id, icon: 'none' })
+	if (!id) return
+	uni.navigateTo({ url: `/pages/article/detail?id=${id}` })
 }
 function tapSeeAll() {
 	uni.showToast({ title: 'See All', icon: 'none' })
@@ -372,9 +390,9 @@ function tapFilter() {
 		justify-content: center;
 	}
 
-	.quick-icon-text {
-		font-size: 30rpx;
-		color: rgba(255, 255, 255, 0.85);
+	.quick-icon-img {
+		width: 44rpx;
+		height: 44rpx;
 	}
 
 	.quick-text {
@@ -470,18 +488,27 @@ function tapFilter() {
 
 	.rec-main {
 		flex: 1;
+		overflow: hidden;
 	}
 
 	.rec-title {
+		display: block;
 		font-size: 26rpx;
 		color: rgba(255, 255, 255, 0.92);
 		font-weight: 700;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 
 	.rec-subtitle {
+		display: block;
 		margin-top: 6rpx;
 		font-size: 22rpx;
 		color: rgba(255, 255, 255, 0.55);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 
 	.bottom-space {

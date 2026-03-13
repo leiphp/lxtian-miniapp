@@ -7,7 +7,8 @@ import { get } from '@/utils/request.js'
  * 文章列表
  * - 默认：page_size=6
  * - 分类：传 cid
- * @param {Object} params - { page, page_size, cid }
+ * - 推荐：传 types=1
+ * @param {Object} params - { page, page_size, cid, types }
  * @returns {Promise<{ list: Array, page: number, page_size: number, total: number }>}
  */
 export function getArticleList(params = {}) {
@@ -17,6 +18,9 @@ export function getArticleList(params = {}) {
   }
   if (params.cid !== undefined && params.cid !== null && params.cid !== '') {
     payload.cid = params.cid
+  }
+  if (params.types !== undefined && params.types !== null && params.types !== '') {
+    payload.types = params.types
   }
   return get('/web/article/list', payload, { noAuth: true, noToast: true })
 }

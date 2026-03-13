@@ -8,14 +8,7 @@
 				</view>
 				<text class="nav-title">AI知识库</text>
 			</view>
-			<view class="nav-right">
-				<view class="nav-btn">
-					<text class="nav-btn-icon">🔔</text>
-				</view>
-				<view class="nav-avatar">
-					<view class="nav-avatar-ph"></view>
-				</view>
-			</view>
+			<view class="nav-right"></view>
 		</view>
 
 		<scroll-view class="scroll" scroll-y>
@@ -83,7 +76,7 @@
 							@click="tapCategory(item.id)"
 						>
 							<view class="cat-icon" :class="'cat-icon-' + item.id">
-								<text class="cat-icon-text">{{ item.icon }}</text>
+								<image class="cat-icon-img" :src="item.icon" mode="aspectFit" />
 							</view>
 							<text class="cat-text">{{ item.text }}</text>
 						</view>
@@ -143,10 +136,10 @@ const question = ref('')
 const askTags = ref(['提示词优化', '代码生成', '文案创作'])
 
 const categories = ref([
-	{ id: 'prompt', icon: '📄', text: '提示词' },
-	{ id: 'tools', icon: '✦', text: 'AI工具' },
-	{ id: 'cases', icon: '📍', text: '精选案例' },
-	{ id: 'courses', icon: '🎓', text: '系统教程' }
+	{ id: 'prompt', icon: '/static/icon/prompt.png', text: '提示词' },
+	{ id: 'tools', icon: '/static/icon/tools.png', text: 'AI工具' },
+	{ id: 'cases', icon: '/static/icon/cases.png', text: '精选案例' },
+	{ id: 'courses', icon: '/static/icon/courses.png', text: '系统教程' }
 ])
 
 const feedList = ref([
@@ -198,6 +191,10 @@ function sendQuestion() {
 }
 
 function tapCategory(id) {
+	if (id === 'prompt') {
+		uni.navigateTo({ url: '/pages/prompt/index' })
+		return
+	}
 	uni.showToast({ title: '分类：' + id, icon: 'none' })
 }
 
@@ -510,10 +507,13 @@ function tapViewAll() {
 		display: flex;
 		align-items: center;
 		justify-content: center;
+		overflow: hidden;
 	}
 
-	.cat-icon-text {
-		font-size: 36rpx;
+	/* 图标缩小一些，居中悬浮的感觉 */
+	.cat-icon-img {
+		width: 56rpx;
+		height: 56rpx;
 	}
 
 	.cat-icon-prompt {

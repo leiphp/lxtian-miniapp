@@ -1,11 +1,8 @@
 <template>
 	<view class="page">
-		<!-- 顶部：标题居中 + 设置 -->
+		<!-- 顶部占位（去掉标题与图标） -->
 		<view class="nav">
-			<text class="nav-title">个人中心</text>
-			<view class="nav-right" @click="tapSettings">
-				<text class="nav-icon">⚙</text>
-			</view>
+			<view class="nav-right"></view>
 		</view>
 
 		<scroll-view class="scroll" scroll-y>
@@ -13,8 +10,10 @@
 				<!-- 头像 + 昵称 + 等级 + ID -->
 				<view class="profile-card">
 					<view class="avatar-wrap">
-						<view class="avatar-ph"></view>
-						<view class="avatar-badge"><text class="avatar-badge-text">PRO</text></view>
+						<image class="avatar-img" :src="avatarUrl || '/static/avatar.png'" mode="aspectFill" />
+						<view class="avatar-badge" v-if="isLogin">
+							<text class="avatar-badge-text">PRO</text>
+						</view>
 					</view>
 					<view class="profile-main">
 						<view class="name-row">
@@ -76,17 +75,23 @@
 				<!-- 第一组菜单 -->
 				<view class="menu-group">
 					<view class="menu-item" @click="tapCell('orders')">
-						<view class="menu-icon doc">📋</view>
+						<view class="menu-icon doc">
+							<image class="menu-icon-img" src="/static/icon/order.png" mode="aspectFit" />
+						</view>
 						<text class="menu-text">我的订单</text>
 						<text class="menu-arrow">›</text>
 					</view>
 					<view class="menu-item" @click="tapCell('columns')">
-						<view class="menu-icon doc">📑</view>
+						<view class="menu-icon doc">
+							<image class="menu-icon-img" src="/static/icon/column.png" mode="aspectFit" />
+						</view>
 						<text class="menu-text">我的专栏</text>
 						<text class="menu-arrow">›</text>
 					</view>
 					<view class="menu-item" @click="tapCell('favorites')">
-						<view class="menu-icon bookmark">🔖</view>
+						<view class="menu-icon bookmark">
+							<image class="menu-icon-img" src="/static/icon/star.png" mode="aspectFit" />
+						</view>
 						<text class="menu-text">我的收藏</text>
 						<text class="menu-arrow">›</text>
 					</view>
@@ -95,12 +100,16 @@
 				<!-- 第二组：帮助、退出 -->
 				<view class="menu-group second">
 					<view class="menu-item" @click="tapCell('help')">
-						<view class="menu-icon help">💬</view>
+						<view class="menu-icon help">
+							<image class="menu-icon-img" src="/static/icon/help.png" mode="aspectFit" />
+						</view>
 						<text class="menu-text">帮助与反馈</text>
 						<text class="menu-arrow">›</text>
 					</view>
 					<view class="menu-item" @click="tapLogout">
-						<view class="menu-icon logout">↪</view>
+						<view class="menu-icon logout">
+							<image class="menu-icon-img" src="/static/icon/exit.png" mode="aspectFit" />
+						</view>
 						<text class="menu-text logout-text">退出登录</text>
 						<text class="menu-arrow">›</text>
 					</view>
@@ -117,9 +126,7 @@ import { ref } from 'vue'
 
 const isLogin = ref(true)
 
-function tapSettings() {
-	uni.showToast({ title: '设置', icon: 'none' })
-}
+const avatarUrl = ref('/static/avatar.png')
 
 function tapCell(type) {
 	uni.showToast({ title: type, icon: 'none' })
@@ -149,12 +156,13 @@ function tapLogout() {
 	}
 
 	.nav {
-		height: 96rpx;
+		/* height: 96rpx; */
 		padding: 0 24rpx;
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		position: relative;
+		margin-top: 12rpx;
 	}
 
 	.nav-title {
@@ -205,16 +213,16 @@ function tapLogout() {
 		position: relative;
 	}
 
-	.avatar-ph {
+	.avatar-img {
 		width: 100%;
 		height: 100%;
 		border-radius: 60rpx;
-		background: linear-gradient(135deg, rgba(148, 163, 184, 0.4), rgba(71, 85, 105, 0.6));
 	}
 
+	/* PRO 标识：头像右下角悬浮徽章 */
 	.avatar-badge {
 		position: absolute;
-		left: -4rpx;
+		right: -4rpx;
 		bottom: 0;
 		min-width: 48rpx;
 		height: 32rpx;
@@ -469,8 +477,12 @@ function tapLogout() {
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		font-size: 28rpx;
 		margin-right: 20rpx;
+	}
+
+	.menu-icon-img {
+		width: 28rpx;
+		height: 28rpx;
 	}
 
 	.menu-icon.doc {
@@ -487,7 +499,6 @@ function tapLogout() {
 
 	.menu-icon.logout {
 		background: rgba(239, 68, 68, 0.2);
-		font-size: 24rpx;
 	}
 
 	.menu-text {

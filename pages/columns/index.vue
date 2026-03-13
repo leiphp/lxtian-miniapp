@@ -1,16 +1,6 @@
 <template>
 	<view class="page">
-		<!-- 顶部导航 -->
-		<view class="nav">
-			<view class="nav-btn" @click="goHome">
-				<text class="nav-icon">←</text>
-			</view>
-			<text class="nav-title">专栏</text>
-			<view class="nav-btn" @click="tapSearch">
-				<text class="nav-icon">⌕</text>
-			</view>
-		</view>
-
+		<view class="nav"></view>
 		<!-- 分类筛选 -->
 		<scroll-view class="chips" scroll-x>
 			<view class="chips-inner">
@@ -177,13 +167,14 @@ function tapCard(id) {
 	}
 
 	.nav {
-		height: 96rpx;
+		/* height: 96rpx; */
 		padding: 0 24rpx;
 		box-sizing: border-box;
 		display: flex;
 		flex-direction: row;
 		align-items: center;
 		justify-content: space-between;
+		margin-top: 15rpx;
 	}
 
 	.nav-btn {
@@ -210,6 +201,7 @@ function tapCard(id) {
 		height: 96rpx;
 		padding: 0 24rpx;
 		box-sizing: border-box;
+		margin-top: 15rpx;
 	}
 
 	.chips-inner {
