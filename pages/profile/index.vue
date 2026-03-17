@@ -10,21 +10,25 @@
 				<!-- 头像 + 昵称 + 等级 + ID -->
 				<view class="profile-card">
 					<view class="avatar-wrap">
-						<image class="avatar-img" :src="avatarUrl || '/static/avatar.png'" mode="aspectFill" />
+						<image
+							class="avatar-img"
+							:src="isLogin ? (avatarUrl || '/static/avatar.png') : '/static/avatar.png'"
+							mode="aspectFill"
+						/>
 						<view class="avatar-badge" v-if="isLogin">
 							<text class="avatar-badge-text">PRO</text>
 						</view>
 					</view>
 					<view class="profile-main">
 						<view class="name-row">
-							<text class="name">{{ isLogin ? '极客探险家' : '未登录' }}</text>
-							<view class="level-badge" v-if="isLogin">
-								<text class="level-text">V3</text>
+							<text class="name">{{ isLogin ? (userInfo.nickName || '微信用户') : '未登录' }}</text>
+							<view class="level-badge" v-if="isLogin && isVip">
+								<text class="level-text">V{{ vipLevel }}</text>
 								<text class="level-bar">‖</text>
-								<text class="level-bar">‖</text>
+								<text class="level-bar">{{ vipExpireDate }}</text>
 							</view>
 						</view>
-						<text class="user-id" v-if="isLogin">ID: 882934120</text>
+						<text class="user-id" v-if="isLogin">ID: {{ userInfo.uid }}</text>
 						<text class="user-id sub" v-else>登录后同步学习进度与购买记录</text>
 					</view>
 				</view>
@@ -45,8 +49,8 @@
 					</view>
 				</view>
 
-				<!-- 超级会员中心 -->
-				<view class="member-card">
+				<!-- 超级会员中心：仅在 VIP 有效时显示 -->
+				<view class="member-card" v-if="isLogin && isVip">
 					<view class="member-bg"></view>
 					<view class="member-pattern"></view>
 					<view class="member-content">
@@ -55,7 +59,7 @@
 								<view class="member-star">★</view>
 								<text class="member-title">超级会员中心</text>
 							</view>
-							<text class="member-expire">2024-12-31</text>
+							<text class="member-expire">{{ vipExpireDate }}</text>
 						</view>
 						<view class="member-desc">
 							<text class="member-desc-main">50+ AI</text>
@@ -97,7 +101,7 @@
 					</view>
 				</view>
 
-				<!-- 第二组：帮助、退出 -->
+				<!-- 第二组：帮助、退出（未登录时隐藏退出） -->
 				<view class="menu-group second">
 					<view class="menu-item" @click="tapCell('help')">
 						<view class="menu-icon help">
@@ -106,7 +110,7 @@
 						<text class="menu-text">帮助与反馈</text>
 						<text class="menu-arrow">›</text>
 					</view>
-					<view class="menu-item" @click="tapLogout">
+					<view class="menu-item" v-if="isLogin" @click="tapLogout">
 						<view class="menu-icon logout">
 							<image class="menu-icon-img" src="/static/icon/exit.png" mode="aspectFit" />
 						</view>
@@ -122,26 +126,152 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted, computed } from 'vue'
+import { ensureLogin, isLoggedIn, clearToken } from '@/api/auth.js'
+import CryptoJS from 'crypto-js'
+import { QINIU_CONFIG, DEFAULT_EXPIRES, isQiniuConfigured } from '@/config/qiniu.js'
 
-const isLogin = ref(true)
+const isLogin = ref(false)
+const avatarUrl = ref('')
+const userInfo = ref({})
 
-const avatarUrl = ref('/static/avatar.png')
+const isVip = computed(() => {
+	const vip = userInfo.value && userInfo.value.vip
+	return !!(vip && vip.is_valid)
+})
+
+const vipLevel = computed(() => {
+	const level = userInfo.value?.vip?.level
+	return level || 0
+})
+
+const vipExpireDate = computed(() => {
+	const end = userInfo.value?.vip?.end_time
+	if (!end) return ''
+	// 格式如 "2026-04-15 00:27:17" -> 只取年月日
+	return String(end).split(' ')[0]
+})
+
+function generatePrivateHttpsUrl(key, expires = DEFAULT_EXPIRES) {
+	if (!CryptoJS || typeof CryptoJS.HmacSHA1 !== 'function') {
+		console.warn('[qiniu] crypto-js 未正确加载，无法生成签名')
+		const cleanDomain = String(QINIU_CONFIG.domain || '').replace(/^https?:\/\//, '')
+		return `https://${cleanDomain}/${key}`
+	}
+
+	const { accessKey, secretKey, domain } = QINIU_CONFIG
+	const cleanDomain = String(domain || '').replace(/^https?:\/\//, '')
+	const downloadUrl = `https://${cleanDomain}/${key}`
+	const deadline = Math.floor(Date.now() / 1000) + expires
+	const signString = `${downloadUrl}?e=${deadline}`
+	const signature = CryptoJS.HmacSHA1(signString, secretKey).toString(CryptoJS.enc.Base64)
+	const encodedSignature = signature.replace(/\+/g, '-').replace(/\//g, '_')
+	return `${downloadUrl}?e=${deadline}&token=${accessKey}:${encodedSignature}`
+}
+
+function extractKeyFromUrl(url) {
+	if (typeof url !== 'string' || !url) return ''
+	const domain = 'img.100txy.com'
+	const idx = url.indexOf(domain)
+	if (idx === -1) return ''
+	const pathStart = idx + domain.length
+	const pathPart = url.slice(pathStart).replace(/^\//, '').split('?')[0]
+	return pathPart || ''
+}
+
+function isQiniuPrivateUrl(url) {
+	return typeof url === 'string' && url.includes('img.100txy.com') && !url.includes('token=')
+}
+
+function processAvatarUrl(url, expires = DEFAULT_EXPIRES) {
+	if (!url) return '/static/avatar.png'
+	if (!isQiniuConfigured()) {
+		console.warn('七牛云配置不完整，无法生成签名 URL，返回原始 URL')
+		return url
+	}
+	if (isQiniuPrivateUrl(url)) {
+		const key = extractKeyFromUrl(url)
+		if (!key) return url
+		return generatePrivateHttpsUrl(key, expires)
+	}
+	return url
+}
+
+function loadUserInfo() {
+	try {
+		const stored = uni.getStorageSync('userInfo') || {}
+		userInfo.value = stored
+		const rawAvatar = stored.avatarUrl || stored.head_img || ''
+		if (rawAvatar) {
+			try {
+				avatarUrl.value = processAvatarUrl(rawAvatar)
+			} catch (e) {
+				console.error('[qiniu] processAvatarUrl error', e)
+				avatarUrl.value = rawAvatar
+			}
+		} else {
+			avatarUrl.value = ''
+		}
+	} catch (e) {
+		userInfo.value = {}
+		avatarUrl.value = ''
+	}
+}
+
+onMounted(() => {
+	isLogin.value = isLoggedIn()
+	if (isLogin.value) {
+		loadUserInfo()
+	}
+})
+
+async function guardLogin(handler, ...args) {
+	const ok = await ensureLogin()
+	isLogin.value = ok
+	if (ok) {
+		loadUserInfo()
+	}
+	if (!ok) return
+	handler && handler(...args)
+}
 
 function tapCell(type) {
-	uni.showToast({ title: type, icon: 'none' })
+	guardLogin(() => {
+		uni.showToast({ title: type, icon: 'none' })
+	})
 }
 
 function tapRenew() {
-	uni.showToast({ title: '立即续费', icon: 'none' })
+	guardLogin(() => {
+		uni.showToast({ title: '立即续费', icon: 'none' })
+	})
 }
 
 function tapBenefits() {
-	uni.showToast({ title: '权益说明', icon: 'none' })
+	guardLogin(() => {
+		uni.showToast({ title: '权益说明', icon: 'none' })
+	})
 }
 
-function tapLogout() {
-	uni.showToast({ title: '退出登录', icon: 'none' })
+async function tapLogout() {
+	if (!isLogin.value) {
+		uni.showToast({ title: '当前未登录', icon: 'none' })
+		return
+	}
+	const { confirm } = await new Promise((resolve) => {
+		uni.showModal({
+			title: '退出登录',
+			content: '确定要退出当前账号吗？',
+			success: resolve,
+			fail: () => resolve({ confirm: false })
+		})
+	})
+	if (!confirm) return
+	clearToken()
+	isLogin.value = false
+	userInfo.value = {}
+	avatarUrl.value = ''
+	uni.showToast({ title: '已退出登录', icon: 'none' })
 }
 </script>
 

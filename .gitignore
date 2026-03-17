@@ -47,3 +47,6 @@ Thumbs.db
 *.launch.json
 
 docs/
+
+# 七牛敏感配置（不提交到仓库）
+config/qiniu.js
