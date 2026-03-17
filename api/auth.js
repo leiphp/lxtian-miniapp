@@ -5,7 +5,7 @@
  * - 后端登录接口：/auth/:type/login，此处固定 type=4
  */
 import config from '@/utils/config.js'
-import { post } from '@/utils/request.js'
+import { post, put } from '@/utils/request.js'
 
 export function getToken() {
   try {
@@ -29,6 +29,27 @@ export function clearToken() {
 
 export function isLoggedIn() {
   return !!getToken()
+}
+
+/**
+ * 扫码登录：更新二维码状态
+ * @param {string} uuid - 二维码唯一标识
+ * @param {number} status - 状态码，默认 2（例如：已扫码待确认）
+ */
+export async function updateQrStatus(uuid, status = 2) {
+  const data = await put(
+    '/user/qr/status',
+    { uuid, status },
+    {
+      header: {
+        appname: 'blog_miniapp',
+        token: getToken() || ''
+      },
+      noToast: true
+    }
+  )
+
+  return data
 }
 
 /**

@@ -49,6 +49,13 @@
 				"navigationBarTitleText": "提示词广场",
 				"navigationStyle": "custom"
 			}
+		},
+		{
+			"path": "pages/login/index",
+			"style": {
+				"navigationBarTitleText": "确认登录",
+				"navigationStyle": "custom"
+			}
 		}
 	],
 	"globalStyle": {
